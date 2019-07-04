@@ -19,53 +19,15 @@ seopen=no
 ############################################################
 #Am I root
 if [ `id -u` -eq 0 ];then
-	echo "Good lock for you!"
+	echo "Hello root!"
 else
-	echo "Error!You are not root!"
+	echo "Error!You are not root!You can't use this！"
 	exit
 fi
 
-#yum.repos.d backup
-mkdir /root/yum-back -p
-mv /etc/yum.repos.d/* /root/yum-back/
-#make tuna.repo
-cat > /etc/yum.repos.d/tuna.repo <<EOF
-[base]
-name=CentOS-$releasever - Base
-baseurl=http://mirrors.tuna.tsinghua.edu.cn/centos/\$releasever/os/\$basearch/
-gpgcheck=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
-
-#released updates
-[updates]
-name=CentOS-$releasever - Updates
-baseurl=http://mirrors.tuna.tsinghua.edu.cn/centos/\$releasever/updates/\$basearch/
-gpgcheck=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
-
-#additional packages that may be useful
-[extras]
-name=CentOS-$releasever - Extras
-baseurl=http://mirrors.tuna.tsinghua.edu.cn/centos/\$releasever/extras/\$basearch/
-gpgcheck=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
-
-#additional packages that extend functionality of existing packages
-[centosplus]
-name=CentOS-$releasever - Plus
-baseurl=http://mirrors.tuna.tsinghua.edu.cn/centos/\$releasever/centosplus/\$basearch/
-gpgcheck=1
-enabled=0
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
-
-EOF
-#remove cache
-rm -rf /var/cache/yum &> /dev/null
-yum clean all &> /dev/null
-
 #hostanme set
 hostnamectl set-hostname $1
-echo HOSTANME：$(hostname)
+echo HOSTANME : $(hostname)
 
 #IP set
 cat > /etc/sysconfig/network-scripts/ifcfg-eth0 <<EOF
@@ -81,35 +43,103 @@ EOF
 sed -i "/^IPADDR=/s/=.*/=$2/" /etc/sysconfig/network-scripts/ifcfg-eth0
 cat /etc/sysconfig/network-scripts/ifcfg-e* |grep IPADDR
 
-#hosts
+#hosts set
 cp -f /etc/hosts /etc/hosts.bak
 head -2 /etc/hosts.bak > /etc/hosts
 echo "$2 $1" >> /etc/hosts
+
+#yum.repos.d backup
+mkdir /root/yum-back -p
+mv /etc/yum.repos.d/* /root/yum-back/
+
+#touch tuna.repo
+cat > /etc/yum.repos.d/tuna.repo <<EOF
+[base]
+name=CentOS-\$releasever - Base
+baseurl=http://mirrors.tuna.tsinghua.edu.cn/centos/\$releasever/os/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+#released updates
+[updates]
+name=CentOS-\$releasever - Updates
+baseurl=http://mirrors.tuna.tsinghua.edu.cn/centos/\$releasever/updates/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+#additional packages that may be useful
+[extras]
+name=CentOS-\$releasever - Extras
+baseurl=http://mirrors.tuna.tsinghua.edu.cn/centos/\$releasever/extras/\$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+#additional packages that extend functionality of existing packages
+[centosplus]
+name=CentOS-\$releasever - Plus
+baseurl=http://mirrors.tuna.tsinghua.edu.cn/centos/\$releasever/centosplus/\$basearch/
+gpgcheck=1
+enabled=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+EOF
+#remove yum cache
+rm -rf /var/cache/yum &> /dev/null
+yum clean all &> /dev/null
+
+
+
 
 #firewalld set
 if [ $flopen1 = no ];then
 	#close firewalld
 	systemctl stop firewalld.service &> /dev/null
+	echo 'firewalld  :  stop'
 elif [ $flopen1 = yes ] ;then
 	#open firewalld
 	systemctl start firewalld.service &> /dev/null
+	echo 'firewalld  : start'
 fi
 
 #firewalld chkconfig set
 if [ $flopen2 = no ];then	
-	#firewalld chkconfig open
-	systemctl disable firewalld.service &> /dev/null
-elif [ $flopen2 = yes ] ;then
 	#firewalld chkconfig close
+	systemctl disable firewalld.service &> /dev/null
+	echo 'firewalld chkconfig  :  disable'
+elif [ $flopen2 = yes ] ;then
+	#firewalld chkconfig open
 	systemctl enable firewalld.service &> /dev/null
+	echo 'firewalld chkconfig  :  enable '
 fi
 
 
-#selinux
+#selinux set
 if [ $seopen = yes ];then
 	#open selinux
 	sed -i '/^SELINUX=/s/=.*/=enforcing/' /etc/selinux/config
+	echo 'SELINUX : enforcing'
 elif [ $seopen = no ] ;then
 	#close selinux
 	sed -i '/^SELINUX=/s/=.*/=disabled/' /etc/selinux/config
+	echo 'SELINUX : disabled'
 fi
+
+#restart network
+systemctl restart network
+
+#reboot
+while true
+do
+	echo "Whether to restart the computer(yes|no)" 
+	read -p ": " restart1
+	if [ $restart1 = no ];then	
+		echo 'Thank you for using,Bye !'
+		break
+	elif [ $restart1 = yes ] ;then
+		echo 'Thank you for using,Bye !'
+		reboot
+	else
+		echo "Error useage(yes|no)"
+		continue
+	fi
+done
