@@ -1,10 +1,10 @@
 #!/bin/bash
-#el7 set
+#el7 setup v1.1
 #by:nerubian|奈幽
-#使用方法：sh nerubian.sh new_hostname new_ip
+#Usage: sh nerubian.sh [new_hostname] [new_ip]
 
-#setup
-#################################################################
+#Parameter setting area/参数设置区域
+####################################################################
 #	yes = open
 #	no  = close
 
@@ -14,24 +14,47 @@ flopen1=no
 flopen2=no
 #SElinux(yes|no)
 seopen=no
+#network name
+netname=eth0
+#getwark
+getw=192.168.122.1
 
+#Status detection area/状态检测区域
+####################################################################
+echo '============================================================='
+echo
+echo -e "\033[32mUsage: sh nerubian.sh [new_hostname] [new_ip]\033[0m"
+echo
 
-############################################################
+#$1 and $2 Non-empty Detection
+if [ $1 -z ];then
+	echo 'Error! Parameter is null! Please reenter the command!'
+	echo 'Usage: sh nerubian.sh [new_hostname] [new_ip]'
+	exit
+elif [ $2 -z ];then
+	echo 'Error! IP is null! Please reenter the command!'
+	echo 'Usage: sh nerubian.sh [new_hostname] [new_ip]'
+	exit
+fi
+
 #Am I root
 if [ `id -u` -eq 0 ];then
 	echo "Hello root!"
 else
-	echo "Error!You are not root!You can't use this！"
+	echo "Error! You are not root! You can't use this！"
 	exit
 fi
+
+#Command execution area/命令执行区域
+####################################################################
 
 #hostanme set
 hostnamectl set-hostname $1
 echo HOSTANME : $(hostname)
 
 #IP set
-cat > /etc/sysconfig/network-scripts/ifcfg-eth0 <<EOF
-DEVICE=eth0
+cat > /etc/sysconfig/network-scripts/ifcfg-$netname <<EOF
+DEVICE=$netname
 TYPE=Ethernet
 ONBOOT=yes
 BOOTPROTO=static
@@ -40,8 +63,16 @@ NETMASK=255.255.255.0
 GATEWAY=192.168.122.1
 DNS1=119.29.29.29
 EOF
-sed -i "/^IPADDR=/s/=.*/=$2/" /etc/sysconfig/network-scripts/ifcfg-eth0
-cat /etc/sysconfig/network-scripts/ifcfg-e* |grep IPADDR
+
+#echo IP
+sed -i "/^IPADDR=/s/=.*/=$2/" /etc/sysconfig/network-scripts/ifcfg-$netname
+ipin=`awk -F= '$1=="IPADDR" {print $2}' /etc/sysconfig/network-scripts/ifcfg-$netname`
+echo The IP to ifcfg-$netname is: $ipin
+
+#echo GATEWAY
+sed -i "/^GATEWAY=/s/=.*/=$getw/" /etc/sysconfig/network-scripts/ifcfg-$netname
+ipin2=`awk -F= '$1=="GATEWAY" {print $2}' /etc/sysconfig/network-scripts/ifcfg-$netname`
+echo The GATEWAY to ifcfg-$netname is: $ipin2
 
 #hosts set
 cp -f /etc/hosts /etc/hosts.bak
@@ -83,12 +114,15 @@ enabled=0
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
 
 EOF
+
+#tuna.repo backup
+if [ ! -d "/root/yum-back/tuna.repo" ];then
+	cp /root/yum-back/tuna.repo /etc/yum.repos.d/
+fi
+	
 #remove yum cache
 rm -rf /var/cache/yum &> /dev/null
 yum clean all &> /dev/null
-
-
-
 
 #firewalld set
 if [ $flopen1 = no ];then
@@ -124,22 +158,27 @@ elif [ $seopen = no ] ;then
 	echo 'SELINUX : disabled'
 fi
 
-#restart network
-systemctl restart network
-
 #reboot
+echo
+echo '============================================================='
 while true
 do
 	echo "Whether to restart the computer(yes|no)" 
 	read -p ": " restart1
-	if [ $restart1 = no ];then	
+	if [ $restart1 = no -o $restart1 = NO -o $restart1 = n -o $restart1 = N ];then	
 		echo 'Thank you for using,Bye !'
 		break
-	elif [ $restart1 = yes ] ;then
+	elif [ $restart1 = yes -o $restart1 = YES -o $restart1 = y -o $restart1 = Y ] ;then
 		echo 'Thank you for using,Bye !'
 		reboot
 	else
-		echo "Error useage(yes|no)"
+		echo -e "\033[31m Error! \033[0m \033[32m Usage:[ yes,YES,y,Y | no,NO,n,N ]\033[0m"
 		continue
 	fi
 done
+echo '============================================================='
+
+#restart network
+systemctl restart network
+ipnew=`ip a|grep eth0$|awk -F'[ /]+' '{print $3}'`
+echo The current IP is $ipnew
