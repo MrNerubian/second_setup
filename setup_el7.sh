@@ -23,17 +23,19 @@ getw=192.168.122.1
 ####################################################################
 echo '============================================================='
 echo
-echo -e "\033[32mUsage: sh nerubian.sh [new_hostname] [new_ip]\033[0m"
-echo
 
 #$1 and $2 Non-empty Detection
-if [ $1 -z ];then
-	echo 'Error! Parameter is null! Please reenter the command!'
+if [ ! $1 ];then
+	echo echo -e "\033[31m Error! \033[0m IP is null! Please reenter the command."
 	echo 'Usage: sh nerubian.sh [new_hostname] [new_ip]'
+	echo
+	echo '============================================================='
 	exit
-elif [ $2 -z ];then
-	echo 'Error! IP is null! Please reenter the command!'
+elif [ ! $2 ];then
+	echo echo -e "\033[31m Error! \033[0m IP is null! Please reenter the command."
 	echo 'Usage: sh nerubian.sh [new_hostname] [new_ip]'
+	echo
+	echo '============================================================='
 	exit
 fi
 
@@ -117,7 +119,7 @@ EOF
 
 #tuna.repo backup
 if [ ! -d "/root/yum-back/tuna.repo" ];then
-	cp /root/yum-back/tuna.repo /etc/yum.repos.d/
+	cp /etc/yum.repos.d/tuna.repo /root/yum-back/ &> /dev/null
 fi
 	
 #remove yum cache
